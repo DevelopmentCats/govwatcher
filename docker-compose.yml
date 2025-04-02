@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # Frontend web application
+  frontend:
+    build:
+      context: ./govwatcher-frontend
+      dockerfile: Dockerfile
+    container_name: govwatcher-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    environment:
+      - REACT_APP_API_URL=/api
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+
+  # Backend API service
+  api:
+    build:
+      context: ./govwatcher-api
+      dockerfile: Dockerfile
+    container_name: govwatcher-api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - archive-data:/data/archives:ro # Read-only access to archive data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=govwatcher
+      - DB_USER=api_user
+      - DB_PASSWORD=${API_DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ARCHIVE_DATA_PATH=/data/archives
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+
+  # Archiving system
+  archive:
+    build:
+      context: ./govwatcher-archive
+      dockerfile: Dockerfile
+    container_name: govwatcher-archive
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - archive-data:/data/archives # Read-write access to archive data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=govwatcher
+      - DB_USER=archive_admin
+      - DB_PASSWORD=${ARCHIVE_DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ARCHIVE_DATA_PATH=/data/archives
+      - WEBHOOK_API_URL=http://api:3000/webhooks
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+
+  # PostgreSQL database
+  db:
+    build:
+      context: ./govwatcher-db
+      dockerfile: Dockerfile
+    container_name: govwatcher-db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./govwatcher-db/init-scripts:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD}
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=govwatcher
+      - API_PASSWORD=${API_DB_PASSWORD}
+      - ARCHIVE_PASSWORD=${ARCHIVE_DB_PASSWORD}
+      - READONLY_PASSWORD=${READONLY_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+
+  # Redis for caching and job queue
+  redis:
+    build:
+      context: ./govwatcher-redis
+      dockerfile: Dockerfile
+    container_name: govwatcher-redis
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+
+volumes:
+  # Shared volume for archive data
+  archive-data:
+    driver: local
+  
+  # Volume for database persistence
+  db-data:
+    driver: local
+  
+  # Volume for Redis persistence
+  redis-data:
+    driver: local
+
+networks:
+  govwatcher-network:
+    driver: bridge
+
+# Example .env file contents:
+#
+# DB_ROOT_PASSWORD=secure_postgres_root_password
+# API_DB_PASSWORD=secure_api_db_password
+# ARCHIVE_DB_PASSWORD=secure_archive_db_password
+# READONLY_DB_PASSWORD=secure_readonly_password
+# REDIS_PASSWORD=secure_redis_password 
