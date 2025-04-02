@@ -100,7 +100,8 @@ CREATE TABLE archive_queue (
     retries INTEGER DEFAULT 0
 );
 
-CREATE UNIQUE INDEX unique_pending_jobs ON archive_queue (archive_id, operation, status)
+-- Create a partial unique index for pending and in-progress jobs
+CREATE UNIQUE INDEX unique_pending_jobs ON archive_queue (archive_id, operation)
     WHERE status IN ('pending', 'in_progress');
 
 -- Tags for categorizing archives

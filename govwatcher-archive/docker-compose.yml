@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  archive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govwatcher-archive
+    env_file:
+      - /home/coder/workspace/govwatcher/.env
+    volumes:
+      - archive-data:/data/archives
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=archive_admin
+      - DB_PASSWORD=${ARCHIVE_DB_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ARCHIVE_DATA_PATH=${ARCHIVE_DATA_PATH}
+      - MAX_CONCURRENT_CRAWLS=${MAX_CONCURRENT_CRAWLS}
+      - MAX_CRAWL_DEPTH=${MAX_CRAWL_DEPTH}
+      - CRAWLER_USER_AGENT=${CRAWLER_USER_AGENT}
+      - ENABLE_SCREENSHOTS=${ENABLE_SCREENSHOTS}
+      - ENABLE_PDF=${ENABLE_PDF}
+      - ENABLE_TEXT_EXTRACTION=${ENABLE_TEXT_EXTRACTION}
+      - ENABLE_VISUAL_DIFF=${ENABLE_VISUAL_DIFF}
+      - ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
+
+  # Include Redis and DB services as external dependencies
+  redis:
+    external: true
+    name: govwatcher-redis
+
+  db:
+    external: true
+    name: govwatcher-db
+
+volumes:
+  archive-data:
+    driver: local
+
+networks:
+  govwatcher-network:
+    driver: bridge 

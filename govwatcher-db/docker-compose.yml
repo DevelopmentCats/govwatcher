@@ -6,19 +6,35 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: govwatcher-db
+    env_file:
+      - /home/coder/workspace/govwatcher/.env
+    environment:
+      # PostgreSQL main settings - set these explicitly from our env variables
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Application user passwords
+      API_PASSWORD: ${API_DB_PASSWORD}
+      ARCHIVE_PASSWORD: ${ARCHIVE_DB_PASSWORD}
+      READONLY_PASSWORD: ${READONLY_DB_PASSWORD}
+      # Database tuning parameters
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_SHARED_BUFFERS: 2GB
+      POSTGRES_WORK_MEM: 64MB
     volumes:
       - db-data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-devpassword}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-govwatcher}
-      - API_PASSWORD=${API_PASSWORD:-api_password}
-      - ARCHIVE_PASSWORD=${ARCHIVE_PASSWORD:-archive_password}
-      - READONLY_PASSWORD=${READONLY_PASSWORD:-readonly_password}
+      - /home/coder/workspace/govwatcher/govwatcher-db/init-scripts:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - govwatcher-network
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
 
 volumes:
   db-data:
-    driver: local 
+    driver: local
+
+networks:
+  govwatcher-network:
+    driver: bridge 
