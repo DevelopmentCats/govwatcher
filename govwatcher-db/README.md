@@ -25,24 +25,28 @@ docker compose up -d
 docker compose up -d db
 ```
 
-### Standalone Docker Setup
+### Standalone Database Setup
 
-You can also run the database container directly:
+You can also run the database container by itself:
 
 ```bash
 cd govwatcher-db
 
-# Create a .env file from the example
+# Create a .env file from the example (if you haven't already)
 cp .env.example .env
-# Edit the .env file with your preferred settings
 
-# Build and run the container
-docker build -t govwatcher-db .
-docker run -d --name govwatcher-db \
-  --env-file .env \
-  -p 5432:5432 \
-  -v govwatcher-db-data:/var/lib/postgresql/data \
-  govwatcher-db
+# Edit the .env file with your preferred settings
+nano .env
+
+# Build and run the container with environment variables from .env
+docker-compose -f docker-compose.db-only.yml up -d
+```
+
+To ensure your .env file is being read correctly, you can verify with:
+
+```bash
+# List the container with environment variables
+docker inspect govwatcher-db | grep -A 20 "Env"
 ```
 
 ## Database Schema
@@ -125,3 +129,33 @@ docker exec -it govwatcher-db psql -U postgres -c "SELECT * FROM pg_stat_activit
 - Database: govwatcher
 - Superuser: postgres (password in .env)
 - Application users: archive_admin, api_user, readonly_user 
+
+## Health Check
+
+The `check-db.sh` script provides a quick health check for your database container:
+
+```bash
+# Run health check (defaults to checking the container named govwatcher-db)
+./check-db.sh
+
+# Or specify a custom container name
+./check-db.sh your-container-name
+```
+
+This script verifies:
+- If the database container is running
+- PostgreSQL version
+- Database existence
+- Required users
+- Required tables
+- Sample data
+
+### Troubleshooting Container Names
+
+By default, the following container names are used:
+- `govwatcher-db` - When using either the main project's docker-compose.yml or this directory's docker-compose.db-only.yml
+- `govwatcher-db-test` - Used by previous versions of docker-compose.db-only.yml
+
+If your container has a different name, either:
+1. Pass the container name to the script: `./check-db.sh your-container-name`
+2. Stop and remove existing containers, then restart using the docker-compose file 

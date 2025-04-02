@@ -6,7 +6,7 @@ services:
     build:
       context: ../govwatcher-db
       dockerfile: Dockerfile
-    container_name: govwatcher-db-test
+    container_name: govwatcher-db
     volumes:
       - db-data:/var/lib/postgresql/data
       - ../govwatcher-db/init-scripts:/docker-entrypoint-initdb.d
@@ -26,7 +26,7 @@ services:
   # Redis for caching and job queue
   redis:
     image: redis:6-alpine
-    container_name: govwatcher-redis-test
+    container_name: govwatcher-redis
     volumes:
       - redis-data:/data
     command: redis-server --requirepass redis_password
@@ -40,7 +40,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: govwatcher-archive-test
+    container_name: govwatcher-archive
     depends_on:
       - db
       - redis
@@ -58,7 +58,7 @@ services:
       - REDIS_PASSWORD=redis_password
       - ARCHIVE_DATA_PATH=/data/archives
     networks:
-      - govwatcher-test-network
+      - govwatcher-network
     command: ["server", "--debug"]
 
 volumes:
@@ -70,5 +70,5 @@ volumes:
     driver: local
 
 networks:
-  govwatcher-test-network:
+  govwatcher-network:
     driver: bridge 

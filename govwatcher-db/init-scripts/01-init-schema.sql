@@ -97,9 +97,11 @@ CREATE TABLE archive_queue (
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
     error_message TEXT,
-    retries INTEGER DEFAULT 0,
-    UNIQUE(archive_id, operation, status) WHERE status IN ('pending', 'in_progress')
+    retries INTEGER DEFAULT 0
 );
+
+CREATE UNIQUE INDEX unique_pending_jobs ON archive_queue (archive_id, operation, status)
+    WHERE status IN ('pending', 'in_progress');
 
 -- Tags for categorizing archives
 CREATE TABLE tags (
