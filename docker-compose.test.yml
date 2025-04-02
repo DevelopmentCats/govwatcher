@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  db:
+    build:
+      context: ../govwatcher-db
+      dockerfile: Dockerfile
+    container_name: govwatcher-db-test
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../govwatcher-db/init-scripts:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=govwatcher
+      - API_PASSWORD=api_password
+      - ARCHIVE_PASSWORD=archive_password
+      - READONLY_PASSWORD=readonly_password
+    ports:
+      - "5432:5432"
+    networks:
+      - govwatcher-test-network
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+
+  # Redis for caching and job queue
+  redis:
+    image: redis:6-alpine
+    container_name: govwatcher-redis-test
+    volumes:
+      - redis-data:/data
+    command: redis-server --requirepass redis_password
+    ports:
+      - "6379:6379"
+    networks:
+      - govwatcher-test-network
+
+  # Archiving system
+  archive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govwatcher-archive-test
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - archive-data:/data/archives
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=govwatcher
+      - DB_USER=archive_admin
+      - DB_PASSWORD=archive_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=redis_password
+      - ARCHIVE_DATA_PATH=/data/archives
+    networks:
+      - govwatcher-test-network
+    command: ["server", "--debug"]
+
+volumes:
+  db-data:
+    driver: local
+  redis-data:
+    driver: local
+  archive-data:
+    driver: local
+
+networks:
+  govwatcher-test-network:
+    driver: bridge 

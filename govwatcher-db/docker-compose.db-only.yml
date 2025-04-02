@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govwatcher-db-test
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=govwatcher
+      - API_PASSWORD=api_password
+      - ARCHIVE_PASSWORD=archive_password
+      - READONLY_PASSWORD=readonly_password
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+
+volumes:
+  db-data:
+    driver: local 
